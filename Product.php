@@ -9,8 +9,9 @@ class Product extends REST_Controller {
 	{
 		parent::__construct();
 		$this->load->model('api_model'); 
-		
-	}
+    $this->load->library('form_validation');
+
+  }
 
 	/* 
     INSERT:POST REQUEST TYPE
@@ -18,142 +19,111 @@ class Product extends REST_Controller {
     DELETE:DELETE REQUEST TYPE
     LIST:GET REQUEST TYPE
 	*/
-	//POST:<project_url>/index.php/controller name(product)/methodname(index is method name so not required to define)
-    public function index_post(){
-		//insert data method
-    	$this->form_validation->set_rules('name', 'Name', 'trim'); 
-    	$this->form_validation->set_rules('price', 'Price', 'trim'); 
-    	if($this->form_validation->run() == FALSE)  
-    	{
-     /*  $data=json_decode(file_get_contents("php://input"));
-    	$name=isset($data->name)?$data->name:"";
-    	$price=isset($data->price)?$data->price:"";
-    	if(!empty($name) && !empty($price)) */
-    		$this->response(array
-    			('status' => 400,
-    				'message' => 'All fiels needed.',
-    				"data"=>$data),
-    			REST_Controller::HTTP_NOT_FOUND);
+	//get:<project_url>/index.php/controller name(product)/methodname(index is method name so not required to define)
+    public function index(){
+
+
+      $data = $this->api_model->fetch_all();
+      echo json_encode($data->result_array());
+      
     }
-    else{
-        $name = $this->security->xss_clean($this->input->post('name'));
-        $price=$this->input->post('price');
-        $data=array(
-          'name'=>$name,
-          'price'=>$price
-      );
-        $res = $this->api_model->insertData('product', $data);
-        if($res){
-          $this->response(array
-           ('status' => 400,
-            'message' => 'data inserted.',
-            "data"=>$data),
-           REST_Controller::HTTP_OK);
-
+	//PUT:<project_url>/index.php/controller name(product)
+    function fetch_single()
+    {
+      if($this->input->post('id'))
+      {
+       $data = $this->api_model->fetch_single_user($this->input->post('id'));
+       foreach($data as $row)
+       {
+        $output['full_name'] = $row["name"];
+        $output['price'] = $row["price"];
       }
-      else{
-          $this->response(array
-           ('status' => 400,
-            'message' => 'Failed to insert data.',
-            "data"=>$data),
-           REST_Controller::HTTP_INTERNAL_SERVER_ERROR);
+      echo json_encode($output);
+    }
+  }
+  public function index_put(){
+		//updating data method
+    $this->form_validation->set_rules("full_name", "Enter Name", "required");
+    $this->form_validation->set_rules("price", "Enter Price", "required");
+    $array = array();
+    if($this->form_validation->run())
+    {
+     $data = array(
+      'name' => trim($this->input->post('full_name')),
+      'price'  => trim($this->input->post('price'))
+    );
+     $this->api_model->update_api($this->input->post('id'), $data);
+     $array = array(
+      'success'  => true
+    );
+   }
+   else
+   {
+     $array = array(
+      'error'    => true,
+      'full_name' => form_error('full_name'),
+      'price_error' => form_error('price')
+    );
+   }
+   echo json_encode($array, true);
+ }
 
-      }
 
+
+	//DELETE:<project_url>/index.php/controller name(product)
+ public function index_delete(){
+		//delete data method
+   if($this->input->post('id'))
+   {
+     if($this->api_model->delete_single_user($this->input->post('id')))
+     {
+      $array = array(
+       'success' => true
+     );
+    }
+    else
+    {
+      $array = array(
+       'error' => true
+     );
+    }
+    echo json_encode($array);
   }
 }
-	//PUT:<project_url>/index.php/controller name(product)
-public function index_put(){
-		//updating data method
-    $data=json_decode(file_get_contents("php://input"));
-    if(isset($data->id) && isset($data->name) && isset($data->price))
-    {
-        $id=$data->id;
-        $product_info=array(
-            'name' =>$data->name,
-            'price' =>$data->price
-        );
-        $result=$this->api_model->update_records($id,$product_info);
-        if($result){
-           $this->response(array
-            ('status' => 1,
-                'message' => 'data updated.',
-                "data"=>$data),
-            REST_Controller::HTTP_OK);
 
-       }
-       else{
-         $this->response(array
-            ('status' => 0,
-                'message' => 'not updated.',
-                "data"=>$data),
-            REST_Controller::HTTP_INTERNAL_SERVER_ERROR);
-     }
 
- } else{
-    $this->response(array
-        ('status' => 0,
-            'message' => 'all fields are needed.',
-            "data"=>$data),
-        REST_Controller::HTTP_NOT_FOUND);
-
+	//post:<project_url>/index.php/controller name(product)
+public function index_insert(){
+		//insert data method
+ $this->form_validation->set_rules("full_name", "Enter Name", "required");
+ $this->form_validation->set_rules("price", "Enter Price", "required");
+ $array = array();
+ if($this->form_validation->run())
+ {
+   $data = array(
+    'name' => trim($this->input->post('full_name')),
+    'price'  => trim($this->input->post('price'))
+  );
+   $this->api_model->insert_api($data);
+   $array = array(
+    'success'  => true
+  );
+ }
+ else
+ {
+   $array = array(
+    'error'    => true,
+    'full_name' => form_error('full_name'),
+    'price_error' => form_error('price')
+  );
+ }
+ echo json_encode($array, true);
 }
 
 
 }
-	//DELETE:<project_url>/index.php/controller name(product)
-public function index_delete(){
-		//delete data method
-   // $data=json_decode(file_get_contents("php://input"));
-    //$id = $this->security->xss_clean($data->id);
-    $id=$this->input->get('id');
-    $deletedata= $this->api_model->delete($id);
-    if($deletedata)
-    {
-        $this->response(array
-            ('status' => 400,
-                'message' => 'data has been deleted.',
-                "data"=>$data),
-            REST_Controller::HTTP_OK);
-
-    }
-    else{
-       $this->response(array
-        ('status' => 0,
-            'message' => 'failed to delete.',
-            "data"=>$data),
-        REST_Controller::HTTP_NOT_FOUND);
-
-   }
-
-}
-	//GET:<project_url>/index.php/controller name(product)
-public function index_get(){
-		//list data method
-	$data=$this->api_model->get_product();
-    	//print_r($query->result_array());
-	if(count($data)>0)
-	{
-		$this->response(array
-			('status' => 400,
-				'message' => 'fetch success.',
-				"data"=>$data),
-			REST_Controller::HTTP_OK);
-	}
-	else{
-		$this->response(array
-			('status' => 400,
-				'message' => 'Bad request.',
-				"data"=>$data),
-			REST_Controller::HTTP_NOT_FOUND);
-
-	}
 
 
 
-}
-
-
-}
 
 ?>
